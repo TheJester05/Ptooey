@@ -7,8 +7,10 @@ using Random = UnityEngine.Random;
 public class NetworkPlayer : NetworkBehaviour
 {
     [SerializeField] private Renderer _meshRenderer;
+    [SerializeField] private Animator _animator;
 
     [Header("Networked Properties")]
+    [Networked] public NetworkAnimatorData AnimationData { get; set; }
     [Networked] public Color PlayerColor { get; set; }
     [Networked] public NetworkString<_32> PlayerName { get; set; }
     [Networked] public NetworkObject HeldIngredient { get; set; }
@@ -19,6 +21,10 @@ public class NetworkPlayer : NetworkBehaviour
     #region Interpolation Variables
     private Vector3 _lastKnownPosition;
     [SerializeField]private float _lerpSpeed = 3f;
+
+    // This tracks the 'previous' networked state para ma detect 
+    // when a trigger counter (like JumpCount) has increased.
+    private NetworkAnimatorData _lastVisibleData;
     #endregion
 
     #region Fusion Callbacks
@@ -45,31 +51,44 @@ public class NetworkPlayer : NetworkBehaviour
         if (!HasStateAuthority) return;
         if (!GetInput(out NetworkInputData input)) return;
 
-        // Basic Movement
-        this.transform.position +=
-            new Vector3(input.InputVector.normalized.x,
-                0,
-                input.InputVector.normalized.y)
-            * Runner.DeltaTime * 5f; // Added speed multiplier
+        // 1. Handle Movement
+        float speed = input.InputVector.magnitude;
+        Vector3 moveDir = new Vector3(input.InputVector.normalized.x, 0, input.InputVector.normalized.y);
+        this.transform.position += moveDir * Runner.DeltaTime * 5f;
 
-        
-        // Interaction Logic
+        // 2. Local copy of animation data to update
+        var data = AnimationData;
+        data.Speed = speed;
+
+        // 3. Refined Interaction Logic
         if (input.InteractInput)
         {
             if (HeldIngredient == null)
             {
-                TryPickup();
+                // If pickup is successful, increment the counter
+                if (TryPickup())
+                {
+                    data.PickupCount++;
+                }
             }
             else
             {
-                TryDrop();
+                // If drop/throw is successful, increment the counter
+                if (TryDrop())
+                {
+                    data.ThrowCount++;
+                }
             }
         }
 
-       
+        // 4. Update the "Holding" state every tick
+        data.IsHoldingItem = HeldIngredient != null;
+
+        // 5. Sync it back to the network
+        AnimationData = data;
     }
 
-    private void TryPickup()
+    private bool TryPickup()
     {
         // Simple sphere cast to find ingredients or players to steal from
         Collider[] colliders = Physics.OverlapSphere(transform.position, reachDistance);
@@ -80,7 +99,7 @@ public class NetworkPlayer : NetworkBehaviour
             {
                 HeldIngredient = ingredient.Object;
                 ingredient.SetHeld(Object.InputAuthority, true);
-                return;
+                return true;
             }
             
             // Stealing mechanic logic
@@ -94,14 +113,15 @@ public class NetworkPlayer : NetworkBehaviour
                     ingredientBeingStolen.SetHeld(Object.InputAuthority, true);
                 }
                 otherPlayer.HeldIngredient = null;
-                return;
+                return true;
             }
         }
+        return false;
     }
 
-    public void TryDrop()
+    public bool TryDrop()
     {
-        if (HeldIngredient == null) return;
+        if (HeldIngredient == null) return false;
 
         Collider[] colliders = Physics.OverlapSphere(transform.position, reachDistance);
         foreach (var col in colliders)
@@ -114,18 +134,17 @@ public class NetworkPlayer : NetworkBehaviour
                 {
                     Runner.Despawn(HeldIngredient);
                     HeldIngredient = null;
-                    return;
+                    return true;
                 }
             }
         }
 
         // Drop on ground if not added to pot
         var ingredientComp = HeldIngredient.GetComponent<Core.Ingredient>();
-        if (ingredientComp != null)
-        {
-            ingredientComp.SetHeld(PlayerRef.None, false);
-        }
+        if (ingredientComp != null) ingredientComp.SetHeld(PlayerRef.None, false);
+
         HeldIngredient = null;
+        return true;
     }
 
     public override void Render()
