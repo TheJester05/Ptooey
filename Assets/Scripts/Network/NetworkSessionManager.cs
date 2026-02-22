@@ -94,12 +94,14 @@ namespace Network
                 Input.GetAxisRaw("Vertical"));
             data.JumpInput = Input.GetButton("Jump");
 
-            if (Input.GetKeyDown(KeyCode.LeftShift))
+            data.MouseX = Input.GetAxis("Mouse X");
+
+            if (Input.GetKey(KeyCode.LeftShift))
             {
                 data.SprintInput = true;
             }
 
-            if (Input.GetKeyDown(KeyCode.E))
+            if (Input.GetKey(KeyCode.E))
             {
                 data.InteractInput = true;
             }

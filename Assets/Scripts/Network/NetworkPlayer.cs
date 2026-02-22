@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Fusion;
 using Network;
 using UnityEngine;
@@ -8,101 +8,140 @@ public class NetworkPlayer : NetworkBehaviour
 {
     [SerializeField] private Renderer _meshRenderer;
     [SerializeField] private Animator _animator;
-    [SerializeField] private Camera playerCamera;
-
 
     [Header("Networked Properties")]
     [Networked] public NetworkAnimatorData AnimationData { get; set; }
     [Networked] public Color PlayerColor { get; set; }
     [Networked] public NetworkString<_32> PlayerName { get; set; }
     [Networked] public NetworkObject HeldIngredient { get; set; }
+    [Networked] private float _yRotation { get; set; }
 
     [SerializeField] private float reachDistance = 2f;
     [SerializeField] private Transform holdPoint;
+    [SerializeField] private Transform _rat1Mesh;
+
+    [Header("Movement Settings")]
+    private float _verticalVelocity;
+    [SerializeField] private float gravity = -20f;
+    [SerializeField] private float jumpForce = 8f;
+    [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float mouseSensitivity = 3f;
 
     #region Interpolation Variables
     private Vector3 _lastKnownPosition;
-    [SerializeField]private float _lerpSpeed = 3f;
-
-    // This tracks the 'previous' networked state para ma detect 
-    // when a trigger counter (like JumpCount) has increased.
+    [SerializeField] private float _lerpSpeed = 3f;
     private NetworkAnimatorData _lastVisibleData;
     #endregion
 
     #region Fusion Callbacks
     public override void Spawned()
     {
-        if (HasInputAuthority) // client
-        {
-            
-        }
-
-        if (HasStateAuthority) // server
+        if (HasStateAuthority)
         {
             PlayerColor = Random.ColorHSV();
         }
 
         if (Object.HasInputAuthority)
         {
-            playerCamera.gameObject.SetActive(true);
-        }
+            // Find the main camera in the scene automatically
+            Camera mainCam = Camera.main;
 
-        else
-        {
-            playerCamera.gameObject.SetActive(false);
+            if (mainCam != null)
+            {
+                // Activate it (though it's usually always on in the scene)
+                mainCam.gameObject.SetActive(true);
+
+                // Link the camera script to this specific rat's interpolated mesh
+                var camScript = mainCam.GetComponent<ThirdPersonCamera>();
+                if (camScript != null)
+                {
+                    camScript.target = _rat1Mesh; // Assigned in your prefab edit mode
+                }
+            }
+
+            // Lock cursor for your kitchen navigation
+           // Cursor.lockState = CursorLockMode.Locked;
+           // Cursor.visible = false;
         }
     }
-    
+
     public override void Despawned(NetworkRunner runner, bool hasState)
     {
-        
     }
 
     public override void FixedUpdateNetwork()
     {
-        if (!HasStateAuthority) return;
+        // 1. Basic Checks
+        if (!HasStateAuthority && !HasInputAuthority) return;
         if (!GetInput(out NetworkInputData input)) return;
 
-        // 1. Handle Movement
-        float speed = input.InputVector.magnitude;
-        Vector3 moveDir = new Vector3(input.InputVector.normalized.x, 0, input.InputVector.normalized.y);
-        this.transform.position += moveDir * Runner.DeltaTime * 5f;
-
-        // 2. Local copy of animation data to update
         var data = AnimationData;
+        Rigidbody rb = GetComponent<Rigidbody>(); // Reference to the standard Rigidbody
+
+        // 2. ROTATION: Update the rat's horizontal facing based on mouse movement
+        _yRotation += input.MouseX * mouseSensitivity;
+
+        // Apply the rotation to the Rigidbody so it syncs with physics
+        Quaternion targetRotation = Quaternion.Euler(0f, _yRotation, 0f);
+        rb.MoveRotation(targetRotation);
+
+        // Also keep the transform in sync for the Interpolation Target
+        transform.rotation = targetRotation;
+
+        // 3. MOVEMENT DIRECTION: Calculate 'Forward' relative to where the rat is facing
+        Vector3 moveDir = new Vector3(input.InputVector.x, 0, input.InputVector.y);
+        moveDir = transform.TransformDirection(moveDir);
+        moveDir.Normalize();
+
+        // 4. ANIMATION DATA: Update speed for the animator
+        float speed = input.InputVector.magnitude;
         data.Speed = speed;
 
-        // 3. Refined Interaction Logic
+        // 5. JUMPING & VERTICAL VELOCITY
+        if (IsGrounded() && input.JumpInput)
+        {
+            // Apply a direct upward burst. 
+            // We keep the current X and Z velocity so you can jump while running.
+            rb.linearVelocity = new Vector3(rb.linearVelocity.x, jumpForce, rb.linearVelocity.z);
+
+            // Increment the networked jump count to trigger the animation in Render()
+            data.JumpCount++;
+        }
+
+        // 6. APPLY MOVEMENT
+        // We set horizontal velocity but let the Y velocity (gravity/jump) stay as it is.
+        Vector3 moveVelocity = moveDir * moveSpeed;
+        rb.linearVelocity = new Vector3(moveVelocity.x, rb.linearVelocity.y, moveVelocity.z);
+
+        // 6. APPLY PHYSICS VELOCITY: This is the most important change
+        // We set velocity instead of adding to transform.position
+        Vector3 velocity = moveDir * moveSpeed;
+        rb.linearVelocity = new Vector3(velocity.x, _verticalVelocity, velocity.z);
+
+        // 7. INTERACTION LOGIC
         if (input.InteractInput)
         {
             if (HeldIngredient == null)
             {
-                // If pickup is successful, increment the counter
-                if (TryPickup())
-                {
-                    data.PickupCount++;
-                }
+                if (TryPickup()) data.PickupCount++;
             }
             else
             {
-                // If drop/throw is successful, increment the counter
-                if (TryDrop())
-                {
-                    data.ThrowCount++;
-                }
+                if (TryDrop()) data.ThrowCount++;
             }
         }
 
-        // 4. Update the "Holding" state every tick
         data.IsHoldingItem = HeldIngredient != null;
-
-        // 5. Sync it back to the network
         AnimationData = data;
+    }
+
+    private bool IsGrounded()
+    {
+        return Physics.Raycast(transform.position, Vector3.down, 0.1f);
     }
 
     private bool TryPickup()
     {
-        // Simple sphere cast to find ingredients or players to steal from
         Collider[] colliders = Physics.OverlapSphere(transform.position, reachDistance);
         foreach (var col in colliders)
         {
@@ -113,17 +152,14 @@ public class NetworkPlayer : NetworkBehaviour
                 ingredient.SetHeld(Object.InputAuthority, true);
                 return true;
             }
-            
-            // Stealing mechanic logic
+
             var otherPlayer = col.GetComponent<NetworkPlayer>();
             if (otherPlayer != null && otherPlayer != this && otherPlayer.HeldIngredient != null)
             {
                 HeldIngredient = otherPlayer.HeldIngredient;
                 var ingredientBeingStolen = HeldIngredient.GetComponent<Core.Ingredient>();
                 if (ingredientBeingStolen != null)
-                {
                     ingredientBeingStolen.SetHeld(Object.InputAuthority, true);
-                }
                 otherPlayer.HeldIngredient = null;
                 return true;
             }
@@ -142,7 +178,7 @@ public class NetworkPlayer : NetworkBehaviour
             if (pot != null)
             {
                 var ingredient = HeldIngredient.GetComponent<Core.Ingredient>();
-                if (pot.TryAddIngredient(ingredient.Type, Object.InputAuthority)) // <-- pass correct player
+                if (pot.TryAddIngredient(ingredient.Type, Object.InputAuthority))
                 {
                     Runner.Despawn(HeldIngredient);
                     HeldIngredient = null;
@@ -151,7 +187,6 @@ public class NetworkPlayer : NetworkBehaviour
             }
         }
 
-        // Drop on ground if not added to pot
         var ingredientComp = HeldIngredient.GetComponent<Core.Ingredient>();
         if (ingredientComp != null) ingredientComp.SetHeld(PlayerRef.None, false);
 
@@ -165,37 +200,24 @@ public class NetworkPlayer : NetworkBehaviour
         {
             _meshRenderer.material.color = PlayerColor;
         }
+
         var data = AnimationData;
 
         _animator.SetFloat("Speed", data.Speed);
         _animator.SetBool("IsHolding", data.IsHoldingItem);
         _animator.SetBool("IsCrouching", data.IsCrouching);
 
-        if (data.JumpCount != _lastVisibleData.JumpCount)
-        {
-            _animator.SetTrigger("Jump");
-        }
-
-        if (data.ThrowCount != _lastVisibleData.ThrowCount)
-        {
-            _animator.SetTrigger("Throw");
-        }
-
-        if (data.PickupCount != _lastVisibleData.PickupCount)
-        {
-            _animator.SetTrigger("PickUp");
-        }
+        if (data.JumpCount != _lastVisibleData.JumpCount) _animator.SetTrigger("Jump");
+        if (data.ThrowCount != _lastVisibleData.ThrowCount) _animator.SetTrigger("Throw");
+        if (data.PickupCount != _lastVisibleData.PickupCount) _animator.SetTrigger("PickUp");
 
         _lastVisibleData = data;
 
-        // Update held ingredient position locally for smooth movement
         if (HeldIngredient != null && holdPoint != null)
         {
             HeldIngredient.transform.position = holdPoint.position;
             HeldIngredient.transform.rotation = holdPoint.rotation;
         }
-
-
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
@@ -203,35 +225,30 @@ public class NetworkPlayer : NetworkBehaviour
     {
         if (HasStateAuthority)
         {
-            this.PlayerColor = color;
+            PlayerColor = color;
         }
     }
-    
+
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
     private void RPC_SetPlayerName(string color)
     {
         if (HasStateAuthority)
         {
-            this.PlayerName = color;
+            PlayerName = color;
         }
-        //example of how to use string
-        //this.PlayerName.ToString();
     }
-
     #endregion
-    
-    #region Unity Callbacks
 
+    #region Unity Callbacks
     private void Update()
     {
-        if(!HasInputAuthority) return;
+        if (!HasInputAuthority) return;
+
         if (Input.GetKeyDown(KeyCode.Q))
         {
             var randColor = Random.ColorHSV();
             RPC_SetPlayerColor(randColor);
         }
     }
-    
     #endregion
-    
 }
