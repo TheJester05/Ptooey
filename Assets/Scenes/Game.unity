@@ -1116,10 +1116,10 @@ MonoBehaviour:
   _playerCountText: {fileID: 577618821}
   _timerCountText: {fileID: 1726258178}
   _scoreText: {fileID: 978113372}
-  spawnPoints:
-  - {fileID: 483242653}
   _currentRecipeText: {fileID: 682051267}
   pot: {fileID: 2064149368}
+  spawnPoints:
+  - {fileID: 483242653}
   maxPlayers: 2
 --- !u!4 &1113627575
 Transform:
@@ -1582,7 +1582,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 9452ae1262a74094f8a68013fbcd1834, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
