@@ -4,8 +4,8 @@ namespace Core
     {
         None,
         Tomato,
-        Onion,
-        Meat,
+        Lettuce,
+        Chicken,
         Cheese,
         Bread
     }

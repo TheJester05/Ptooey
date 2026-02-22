@@ -10,8 +10,8 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: e793c7d23c1e747408501da89c90ca95, type: 3}
-  m_Name: Cheese tomato
+  m_Name: Everything Burger
   m_EditorClassIdentifier: Assembly-CSharp::Core.RecipeSO
-  RecipeName: Cheemato
-  RequiredIngredients: 0100000004000000
+  RecipeName: 
+  RequiredIngredients: 0100000002000000030000000400000005000000
   PointValue: 10

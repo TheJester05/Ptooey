@@ -1,4 +1,8 @@
 <!-- UNITY CODE ASSIST INSTRUCTIONS START -->
-- Project name: EMC209_SY2025-2026_T2-master
+- Project name: Ptooey
 - Unity version: Unity 6000.3.7f1
+- Active game object:
+  - Name: Rat
+  - Tag: Untagged
+  - Layer: Default
 <!-- UNITY CODE ASSIST INSTRUCTIONS END -->

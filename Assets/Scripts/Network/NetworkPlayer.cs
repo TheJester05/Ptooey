@@ -8,6 +8,8 @@ public class NetworkPlayer : NetworkBehaviour
 {
     [SerializeField] private Renderer _meshRenderer;
     [SerializeField] private Animator _animator;
+    [SerializeField] private Camera playerCamera;
+
 
     [Header("Networked Properties")]
     [Networked] public NetworkAnimatorData AnimationData { get; set; }
@@ -38,6 +40,16 @@ public class NetworkPlayer : NetworkBehaviour
         if (HasStateAuthority) // server
         {
             PlayerColor = Random.ColorHSV();
+        }
+
+        if (Object.HasInputAuthority)
+        {
+            playerCamera.gameObject.SetActive(true);
+        }
+
+        else
+        {
+            playerCamera.gameObject.SetActive(false);
         }
     }
     
@@ -153,6 +165,28 @@ public class NetworkPlayer : NetworkBehaviour
         {
             _meshRenderer.material.color = PlayerColor;
         }
+        var data = AnimationData;
+
+        _animator.SetFloat("Speed", data.Speed);
+        _animator.SetBool("IsHolding", data.IsHoldingItem);
+        _animator.SetBool("IsCrouching", data.IsCrouching);
+
+        if (data.JumpCount != _lastVisibleData.JumpCount)
+        {
+            _animator.SetTrigger("Jump");
+        }
+
+        if (data.ThrowCount != _lastVisibleData.ThrowCount)
+        {
+            _animator.SetTrigger("Throw");
+        }
+
+        if (data.PickupCount != _lastVisibleData.PickupCount)
+        {
+            _animator.SetTrigger("PickUp");
+        }
+
+        _lastVisibleData = data;
 
         // Update held ingredient position locally for smooth movement
         if (HeldIngredient != null && holdPoint != null)
@@ -160,6 +194,8 @@ public class NetworkPlayer : NetworkBehaviour
             HeldIngredient.transform.position = holdPoint.position;
             HeldIngredient.transform.rotation = holdPoint.rotation;
         }
+
+
     }
 
     [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]

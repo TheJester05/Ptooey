@@ -1,10 +1,7 @@
 fileFormatVersion: 2
 guid: 8c027cacbe4fb2e42a461399a890ba15
-PrefabImporter:
-  externalObjects: {}
-  userData: 
-  assetBundleName: 
-  assetBundleVariant: 
+labels:
+- FusionPrefab
 AssetOrigin:
   serializedVersion: 1
   productId: 301805
@@ -12,3 +9,8 @@ AssetOrigin:
   packageVersion: 1.0
   assetPath: Assets/Toony Kitchen Ingredients Free/Prefabs/Ingredients/sandwichBun.prefab
   uploadId: 708770
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
