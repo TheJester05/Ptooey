@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 4062419699820214330}
   - component: {fileID: 2263178614280030064}
   - component: {fileID: 6724408762655311883}
+  - component: {fileID: 484216817459187259}
   m_Layer: 0
   m_Name: tomato
   m_TagString: Untagged
@@ -146,6 +147,27 @@ MonoBehaviour:
   SyncParent: 0
   _autoAOIOverride: 1
   DisableSharedModeInterpolation: 0
+--- !u!65 &484216817459187259
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1796381032900585921}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.0799999, y: 0.8389327, z: 1.08}
+  m_Center: {x: 0.000000029802322, y: 0.0068998337, z: 0}
 --- !u!1 &5465564246243074064
 GameObject:
   m_ObjectHideFlags: 0

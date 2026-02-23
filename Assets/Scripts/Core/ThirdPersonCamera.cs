@@ -29,21 +29,17 @@ public class ThirdPersonCamera : MonoBehaviour
     {
         if (!target) return;
 
-        // 1. Get Mouse Input
-        _currentX += Input.GetAxis("Mouse X") * sensitivity;
+        // 1. Vertical look stays local to the camera
         _currentY -= Input.GetAxis("Mouse Y") * sensitivity;
-
-        // 2. Clamp the vertical rotation so the camera doesn't flip upside down
         _currentY = Mathf.Clamp(_currentY, yMinLimit, yMaxLimit);
 
-        // 3. Create rotation based on mouse movement
-        Quaternion rotation = Quaternion.Euler(_currentY, _currentX, 0);
+        // 2. HORIZONTAL rotation comes directly from the target (the Rat)
+        // This ensures the camera is ALWAYS perfectly in sync with the networked mesh
+        float targetYRotation = target.eulerAngles.y;
 
-        // 4. Calculate the position: 
-        // We move 'back' from the target by the offset's Z, then 'up' by the Y
-        Vector3 position = target.position + rotation * new Vector3(0, 0, offset.z) + new Vector3(0, offset.y, 0);
+        Quaternion rotation = Quaternion.Euler(_currentY, targetYRotation, 0);
+        Vector3 position = target.position + rotation * offset;
 
-        // 5. Apply the final values
         transform.rotation = rotation;
         transform.position = position;
     }

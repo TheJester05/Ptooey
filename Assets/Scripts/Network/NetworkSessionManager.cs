@@ -26,9 +26,13 @@ namespace Network
     
         public event Action<PlayerRef> OnPlayerJoinedEvent;
         public event Action<PlayerRef> OnPlayerLeftEvent;
-    
-        #endregion
 
+        #endregion
+        private float _accumulatedMouseX;
+        void Update()
+        {
+            _accumulatedMouseX += Input.GetAxis("Mouse X");
+        }
         public async void StartGame(GameMode game)
         {
             _networkRunner = GetComponent<NetworkRunner>();
@@ -85,30 +89,29 @@ namespace Network
         }
 
         #endregion
-    
+
         #region Used Fusion Callbacks
         public void OnInput(NetworkRunner runner, NetworkInput input)
         {
             var data = new NetworkInputData();
-            data.InputVector = new Vector2(Input.GetAxisRaw("Horizontal"), 
-                Input.GetAxisRaw("Vertical"));
+
+            // 1. Collect Movement
+            data.InputVector = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             data.JumpInput = Input.GetButton("Jump");
 
-            data.MouseX = Input.GetAxis("Mouse X");
+            // 2. Collect Mouse (Crucial: only reset _accumulatedMouseX once)
+            data.MouseX = _accumulatedMouseX;
+            _accumulatedMouseX = 0;
 
-            if (Input.GetKey(KeyCode.LeftShift))
-            {
-                data.SprintInput = true;
-            }
+            // 3. Collect Keys
+            if (Input.GetKey(KeyCode.LeftShift)) data.SprintInput = true;
+            if (Input.GetKey(KeyCode.E)) data.InteractInput = true;
+            if (Input.GetKey(KeyCode.F)) data.StealInput = true;
 
-            if (Input.GetKey(KeyCode.E))
-            {
-                data.InteractInput = true;
-            }
-            
+            // 4. THE FIX: Only call input.Set ONCE at the very end
             input.Set(data);
         }
-    
+
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
             if (!runner.IsServer) return;
