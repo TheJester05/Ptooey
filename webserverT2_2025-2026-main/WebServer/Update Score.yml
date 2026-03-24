@@ -1,0 +1,17 @@
+info:
+  name: Update Score
+  type: http
+  seq: 7
+
+http:
+  method: PUT
+  url: http://localhost:3000/players
+  auth:
+    type: bearer
+    token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5YjJhOGQ4ZmVlZWU3MGJkOTU1Mjc5MyIsImlhdCI6MTc3MzkyMzYwNCwiZXhwIjoxNzc2NTE1NjA0fQ.P9KJLGV2RfhCRMZCcYJZAwURAUCnQCBpRddOzXv2JJ0
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

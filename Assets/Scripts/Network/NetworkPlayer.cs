@@ -32,10 +32,16 @@ public class NetworkPlayer : NetworkBehaviour
 
     public override void Spawned()
     {
-        if (HasStateAuthority) PlayerColor = Random.ColorHSV();
-
         if (Object.HasInputAuthority)
         {
+            
+            if (APIManager.Instance != null && !string.IsNullOrEmpty(APIManager.Instance.AuthenticatedUsername))
+            {
+                
+                RPC_SetPlayerName(APIManager.Instance.AuthenticatedUsername);
+            }
+
+            
             Camera mainCam = Camera.main;
             if (mainCam != null)
             {
@@ -43,6 +49,13 @@ public class NetworkPlayer : NetworkBehaviour
                 if (camScript != null) camScript.target = _rat1Mesh;
             }
         }
+    }
+
+   
+    [Rpc(RpcSources.InputAuthority, RpcTargets.StateAuthority)]
+    public void RPC_SetPlayerName(string name)
+    {
+        PlayerName = name;
     }
 
     public override void FixedUpdateNetwork()

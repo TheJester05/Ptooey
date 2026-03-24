@@ -156,7 +156,18 @@ namespace Network
 
         private void OnGameOver()
         {
-            Debug.Log("Game Over!");
+            if (HasStateAuthority)
+            {
+                foreach (var playerRef in Object.Runner.ActivePlayers)
+                {
+                    // Get the score from the NetworkDictionary
+                    if (_playerScores.TryGet(playerRef, out int finalScore))
+                    {
+                        // Send the score to your web server
+                        StartCoroutine(APIManager.Instance.UpdatePlayerScore(finalScore));
+                    }
+                }
+            }
         }
     }
 }
