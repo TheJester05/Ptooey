@@ -38,6 +38,7 @@ exports.createPlayer = async (req, res) => {
                 message: `${field} already exists`
             });
         }
+        console.error("REGISTRATION CRASH:", error);
 
         res.status(500).json({
             success: false,
@@ -45,31 +46,30 @@ exports.createPlayer = async (req, res) => {
             error: error.message
         })
     }
+    
 }
 
 exports.login = async (req, res) => {
     try {
-        const {username, password} = req.body;
+        const { username, password } = req.body;
 
-        if(!username || !password){
-            return res.status(400).json({
-                success : false,
-                message: "Please provide a valid username and password"
-            });
-        }
+        
+        const player = await Player.findOne({ username });
 
-        const player = await Player.findOne({username});
-        if(!player || player.password !== password){
+        
+        const isMatch = player ? await player.comparePassword(password) : false;
+
+        if (!player || !isMatch) {
             return res.status(400).json({
-                success : false,
+                success: false,
                 message: "Invalid username or password"
             });
         }
 
         
         const token = generateToken(player._id);
-
-        res.status(201).json({
+        
+        res.status(200).json({
             success: true,
             message: 'Login Successful',
             token,
@@ -77,17 +77,12 @@ exports.login = async (req, res) => {
                 id: player._id,
                 username: player.username,
                 email: player.email,
-                kills: player.kills,
-                deaths: player.deaths
+                score: player.score
             }
         });
 
-    } 
-    catch(error) {
-        res.status(500).json({
-            success: false,
-            error: error.message
-        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
     }
 }
 
